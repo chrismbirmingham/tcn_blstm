@@ -1,9 +1,9 @@
 import os
 import csv
+import torch
 import numpy
 import pandas
-import torch
-
+import random
 
 # File Paths
 # /media/chris/M2/2-Processed_Data/syncnet_output/pyfeat512/1c/aud_feats.pt
@@ -65,41 +65,65 @@ def gen_data(data_path):
         print('Preprocess {}'.format(folder))
         
         for feature_type in ['video_syncnet', 'audio_syncnet', 'video_perfectmatch', 'audio_perfectmatch']:
-            features_stack = []
-            labels_stack = []
+            train_features_stack = []
+            train_labels_stack = []
+            val_features_stack = []
+            val_labels_stack = []
 
+            features_tmp = numpy.load(os.path.join(data_path, folder, folder + '_SYNCS', 'pywork', folder, 'feats_' + feature_type + '.npy'))
+            
             labels_30fps = pandas.read_csv(os.path.join(data_path, folder, folder + '_VAD_MANUAL.csv'))
             labels_25fps = labels_30fps[labels_30fps.index % 6 != 0].reset_index(drop=True)
             
             labels_tmp = []
             for i, row in labels_25fps.iterrows():
                 labels_tmp.append(int(row['speech_activity']))
-
-            features_tmp = numpy.load(os.path.join(data_path, folder, folder + '_SYNCS', 'pywork', folder, 'feats_' + feature_type + '.npy'))
             
-            features = []
-            for i in range(5, len(features_tmp) + 1):
-                features.append(features_tmp[i-5:i])
+            data_size = len(features_tmp)
+            train_size = round(0.9 * data_size)
+            val_size = data_size - train_size
             
-            labels = labels_tmp[4:len(features_tmp)]
-
-            features_stack.append(features)
-            labels_stack.append(labels)
+            random.seed(0)
+            split_idx = random.randint(0, data_size - val_size - 5)
             
-            if not len(features) == len(labels):
-                print(f'33[31m\n\t\Size missmatch {folder}\tDatapoints {len(features)}/{len(labels)}')
-                break
+            train_features_tmp1 = features_tmp[:split_idx]
+            train_features_tmp2 = features_tmp[split_idx + val_size:]
+            val_features_tmp = features_tmp[split_idx:split_idx + val_size]
+            
+            train_labels_tmp1 = labels_tmp[:split_idx]
+            train_labels_tmp2 = labels_tmp[split_idx + val_size:]
+            val_labels_tmp = labels_tmp[split_idx:split_idx + val_size]
+            
+            train_features = []
+            for i in range(5, len(train_features_tmp1) + 1):
+                train_features.append(train_features_tmp1[i-5:i])
+                
+            for i in range(5, len(train_features_tmp2) + 1):
+                train_features.append(train_features_tmp2[i-5:i])
+            
+            val_features = []
+            for i in range(5, len(val_features_tmp) + 1):
+                val_features.append(val_features_tmp[i-5:i])
+            
+            train_features_stack.append(train_features)
+            val_features_stack.append(val_features)
+            train_features_stack = sum(train_features_stack, [])
+            val_features_stack = sum(val_features_stack, [])
+            
+            train_labels_stack = [train_labels_tmp1[4:len(train_features_tmp1)], train_labels_tmp2[4:len(train_features_tmp2)]]
+            val_labels_stack = val_labels_tmp[4:len(val_features_tmp)]
+            train_labels_stack = sum(train_labels_stack, [])
         
-            features_stack = sum(features_stack, [])
-            labels_stack = sum(labels_stack, [])
-        
-            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_FEATURES.npy'), features_stack)
-            numpy.save(os.path.join(data_path, folder, folder + '_LABELS.npy'), labels_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_TRAIN_FEATURES.npy'), train_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_VAL_FEATURES.npy'), val_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_TRAIN_LABELS.npy'), train_labels_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_VAL_LABELS.npy'), val_labels_stack)
             
-            print('\tDatapoints ({}) [{}]'.format(feature_type, len(features)))
+            print('\tDatapoints ({}) [{} | {}]'.format(feature_type, len(train_features_stack), len(val_features_stack)))
 
 def main():
     # copy_dataset_format("/media/chris/M2/2-Processed_Data/")
+    
     gen_data('data')
 
 if __name__ == '__main__':
