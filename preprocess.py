@@ -5,10 +5,7 @@ import numpy
 import pandas
 import random
 
-# File Paths
-# /media/chris/M2/2-Processed_Data/syncnet_output/pyfeat512/1c/aud_feats.pt
-# /media/chris/M2/2-Processed_Data/syncnet_output/pyfeat512/1c/vid_feats.pt
-# /media/chris/M2/2-Processed_Data/Annotation-Turns/1/turns.csv
+
 
 def copy_dataset_format(drive_path):
     # Copy my dataset to the same format as Kalin's, with one person per folder
@@ -50,6 +47,35 @@ def copy_dataset_format(drive_path):
                 
                 numpy.save(os.path.join(feat_dir, f"feats_video_{net}.npy"),vids)
                 numpy.save(os.path.join(feat_dir, f"feats_audio_{net}.npy"),auds)
+
+
+def add_gaze_features(gaze_data_path):
+    for session in range(1, 28):
+        for person in ["left","right","center"]:
+            folder_id = f"{session}{person[0]}"
+            if folder_id not in os.listdir("data/"):
+                print(f"Not including {folder_id}")
+                continue
+
+            # Gather gaze features into one df
+            columns_of_interest = [f"{p}->{person}" for p in ["left", "right", "center"] if p != person]
+            gaze_ang_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_ang.csv"))
+            gaze_feat_df = gaze_ang_df[columns_of_interest]
+
+            gaze_at_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_at_extralarge_cyl.csv"))
+            for p in ["left", "right", "center"]:
+                if p != person:
+                    gaze_feat_df[f"{p}_at"] = (gaze_at_df[[p]]==person).astype(int)
+
+
+            gaze_feat_df.columns = ["p1_ang", "p2_ang","p1_at", "p2_at"]
+
+            # print(gaze_feat_df[:5])
+            # input("continue?")
+            gaze_feat_df_25fps = gaze_feat_df[gaze_feat_df.index % 6 != 0].reset_index(drop=True)
+            shifted_gaze_feat_df_25fps = gaze_feat_df_25fps[4:]
+
+            shifted_gaze_feat_df_25fps.to_csv(os.path.join("data",folder_id, f"{folder_id}_gaze_feat.csv"))
 
 
 
@@ -110,8 +136,8 @@ def gen_data(data_path):
             train_features_stack = sum(train_features_stack, [])
             val_features_stack = sum(val_features_stack, [])
             
-            train_labels_stack = [train_labels_tmp1[4:len(train_features_tmp1)], train_labels_tmp2[4:len(train_features_tmp2)]]
-            val_labels_stack = val_labels_tmp[4:len(val_features_tmp)]
+            train_labels_stack = [train_labels_tmp1[8:len(train_features_tmp1)], train_labels_tmp2[8:len(train_features_tmp2)]]
+            val_labels_stack = val_labels_tmp[8:len(val_features_tmp)]
             train_labels_stack = sum(train_labels_stack, [])
         
             numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_TRAIN_FEATURES.npy'), train_features_stack)
@@ -123,8 +149,9 @@ def gen_data(data_path):
 
 def main():
     # copy_dataset_format("/media/chris/M2/2-Processed_Data/")
+    add_gaze_features("/media/chris/M2/2-Processed_Data/Gaze-Data")
     
-    gen_data('data')
+    # gen_data('data')
 
 if __name__ == '__main__':
     main()
