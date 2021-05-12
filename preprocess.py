@@ -88,7 +88,7 @@ def gen_data(data_path):
         if not os.path.isdir(os.path.join(data_path, folder)):
             continue
         
-        print('Preprocess {}'.format(folder))
+        print('Preprocess: {}'.format(folder))
         
         for feature_type in ['video_syncnet', 'audio_syncnet', 'video_perfectmatch', 'audio_perfectmatch']:
             train_features_stack = []
@@ -97,13 +97,6 @@ def gen_data(data_path):
             val_labels_stack = []
 
             features_tmp = numpy.load(os.path.join(data_path, folder, folder + '_SYNCS', 'pywork', folder, 'feats_' + feature_type + '.npy'))
-            
-            labels_30fps = pandas.read_csv(os.path.join(data_path, folder, folder + '_VAD_MANUAL.csv'))
-            labels_25fps = labels_30fps[labels_30fps.index % 6 != 0].reset_index(drop=True)
-            
-            labels_tmp = []
-            for i, row in labels_25fps.iterrows():
-                labels_tmp.append(int(row['speech_activity']))
             
             data_size = len(features_tmp)
             train_size = round(0.9 * data_size)
@@ -115,10 +108,6 @@ def gen_data(data_path):
             train_features_tmp1 = features_tmp[:split_idx]
             train_features_tmp2 = features_tmp[split_idx + val_size:]
             val_features_tmp = features_tmp[split_idx:split_idx + val_size]
-            
-            train_labels_tmp1 = labels_tmp[:split_idx]
-            train_labels_tmp2 = labels_tmp[split_idx + val_size:]
-            val_labels_tmp = labels_tmp[split_idx:split_idx + val_size]
             
             train_features = []
             for i in range(5, len(train_features_tmp1) + 1):
@@ -136,22 +125,86 @@ def gen_data(data_path):
             train_features_stack = sum(train_features_stack, [])
             val_features_stack = sum(val_features_stack, [])
             
-            train_labels_stack = [train_labels_tmp1[8:len(train_features_tmp1)], train_labels_tmp2[8:len(train_features_tmp2)]]
-            val_labels_stack = val_labels_tmp[8:len(val_features_tmp)]
-            train_labels_stack = sum(train_labels_stack, [])
-        
-            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_TRAIN_FEATURES.npy'), train_features_stack)
-            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_VAL_FEATURES.npy'), val_features_stack)
-            numpy.save(os.path.join(data_path, folder, folder + '_TRAIN_LABELS.npy'), train_labels_stack)
-            numpy.save(os.path.join(data_path, folder, folder + '_VAL_LABELS.npy'), val_labels_stack)
+            labels_30fps = pandas.read_csv(os.path.join(data_path, folder, folder + '_VAD_MANUAL.csv'))
+            labels_25fps = labels_30fps[labels_30fps.index % 6 != 0].reset_index(drop=True)
             
-            print('\tDatapoints ({}) [{} | {}]'.format(feature_type, len(train_features_stack), len(val_features_stack)))
+            labels_tmp = []
+            for i, row in labels_25fps.iterrows():
+                labels_tmp.append(int(row['speech_activity']))
+
+            # SPEECH labels start at index 8
+            train_labels_tmp1 = labels_tmp[:split_idx + 4]
+            train_labels_tmp2 = labels_tmp[split_idx + val_size:]
+            val_labels_tmp = labels_tmp[split_idx:split_idx + val_size + 4]
+            
+            train_labels_stack = [train_labels_tmp1[8:], train_labels_tmp2[8:]]
+            val_labels_stack = val_labels_tmp[8:]
+            train_labels_stack = sum(train_labels_stack, [])
+            
+            len_diff = len(train_features_stack) - len(train_labels_stack)
+            if len_diff > 0:
+                for i in range(len_diff):
+                    del train_features_stack[-1]
+                
+            else:
+                for i in range(len_diff):
+                    del train_labels_stack[-1]
+                
+            len_diff = len(val_features_stack) - len(val_labels_stack)
+            if len_diff > 0:
+                for i in range(len_diff):
+                    del val_features_stack[-1]
+                
+            else:
+                for i in range(len_diff):
+                    del val_labels_stack[-1]
+            
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_TRAIN_FEATURES_SPEECH.npy'), train_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_VAL_FEATURES_SPEECH.npy'), val_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_TRAIN_LABELS_SPEECH.npy'), train_labels_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_VAL_LABELS_SPEECH.npy'), val_labels_stack)
+            
+            print('\tFeatures: ({}) [{} | {}]\tLabels: [{} | {}]'.format(feature_type + '_speech', len(train_features_stack), len(val_features_stack), len(train_labels_stack), len(val_labels_stack)))
+            
+            # TURN labels start at index (8 + 26)
+            train_labels_tmp1 = labels_tmp[:split_idx + 4 + 26]
+            train_labels_tmp2 = labels_tmp[split_idx + val_size - 1:]
+            val_labels_tmp = labels_tmp[split_idx:split_idx + val_size + 4 + 26]
+            
+            train_labels_stack = [train_labels_tmp1[(8 + 26):], train_labels_tmp2[(8 + 26):]]
+            val_labels_stack = val_labels_tmp[(8 + 26):]
+            train_labels_stack = sum(train_labels_stack, [])
+            
+            len_diff = len(train_features_stack) - len(train_labels_stack)
+            if len_diff > 0:
+                for i in range(len_diff):
+                    del train_features_stack[-1]
+                
+            else:
+                for i in range(len_diff):
+                    del train_labels_stack[-1]
+                
+            len_diff = len(val_features_stack) - len(val_labels_stack)
+            if len_diff > 0:
+                for i in range(len_diff):
+                    del val_features_stack[-1]
+                
+            else:
+                for i in range(len_diff):
+                    del val_labels_stack[-1]
+            
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_TRAIN_FEATURES_TURN.npy'), train_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_VAL_FEATURES_TURN.npy'), val_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_TRAIN_LABELS_TURN.npy'), train_labels_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_VAL_LABELS_TURN.npy'), val_labels_stack)
+
+            print('\tFeatures: ({}) [{} | {}]\tLabels: [{} | {}]'.format(feature_type + '_turn', len(train_features_stack), len(val_features_stack), len(train_labels_stack), len(val_labels_stack)))
 
 def main():
     # copy_dataset_format("/media/chris/M2/2-Processed_Data/")
-    add_gaze_features("/media/chris/M2/2-Processed_Data/Gaze-Data")
+    # add_gaze_features("/media/chris/M2/2-Processed_Data/Gaze-Data")
     
-    # gen_data('data')
+    gen_data('data')
 
 if __name__ == '__main__':
     main()
