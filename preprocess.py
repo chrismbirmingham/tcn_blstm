@@ -95,6 +95,8 @@ def gen_data(data_path):
             train_labels_stack = []
             val_features_stack = []
             val_labels_stack = []
+            all_features_stack = []
+            all_labels_stack = []
 
             features_tmp = numpy.load(os.path.join(data_path, folder, folder + '_SYNCS', 'pywork', folder, 'feats_' + feature_type + '.npy'))
             
@@ -108,22 +110,32 @@ def gen_data(data_path):
             train_features_tmp1 = features_tmp[:split_idx]
             train_features_tmp2 = features_tmp[split_idx + val_size:]
             val_features_tmp = features_tmp[split_idx:split_idx + val_size]
+            all_features_tmp = features_tmp
             
             train_features = []
             for i in range(5, len(train_features_tmp1) + 1):
                 train_features.append(train_features_tmp1[i-5:i])
-                
             for i in range(5, len(train_features_tmp2) + 1):
                 train_features.append(train_features_tmp2[i-5:i])
             
             val_features = []
             for i in range(5, len(val_features_tmp) + 1):
                 val_features.append(val_features_tmp[i-5:i])
+
+            all_features = []
+            for i in range(5, len(features_tmp) + 1):
+                all_features.append(all_features_tmp[i-5:i])
+
+            # Train and val should include all features but 4 at split_idx and 4 at split_idx+val_size
+            assert len(train_features)+len(val_features)==len(all_features)-8, f"{len(train_features)}+{len(val_features)} doesn't = {len(all_features)-8}"
             
             train_features_stack.append(train_features)
             val_features_stack.append(val_features)
+            all_features_stack.append(all_features)
+
             train_features_stack = sum(train_features_stack, [])
             val_features_stack = sum(val_features_stack, [])
+            all_features_stack = sum(all_features_stack, [])
             
             labels_30fps = pandas.read_csv(os.path.join(data_path, folder, folder + '_VAD_MANUAL.csv'))
             labels_25fps = labels_30fps[labels_30fps.index % 6 != 0].reset_index(drop=True)
@@ -134,71 +146,62 @@ def gen_data(data_path):
 
             # SPEECH labels start at index 8
             train_labels_tmp1 = labels_tmp[:split_idx + 4]
-            train_labels_tmp2 = labels_tmp[split_idx + val_size:]
-            val_labels_tmp = labels_tmp[split_idx:split_idx + val_size + 4]
+            train_labels_tmp2 = labels_tmp[split_idx + val_size:len(all_features)+8]
+            val_labels_tmp = labels_tmp[split_idx: split_idx + val_size + 4]
+            all_labels_tmp = labels_tmp[:len(all_features)+8]
             
             train_labels_stack = [train_labels_tmp1[8:], train_labels_tmp2[8:]]
-            val_labels_stack = val_labels_tmp[8:]
             train_labels_stack = sum(train_labels_stack, [])
-            
-            len_diff = len(train_features_stack) - len(train_labels_stack)
-            if len_diff > 0:
-                for i in range(len_diff):
-                    del train_features_stack[-1]
-                
-            else:
-                for i in range(len_diff):
-                    del train_labels_stack[-1]
-                
-            len_diff = len(val_features_stack) - len(val_labels_stack)
-            if len_diff > 0:
-                for i in range(len_diff):
-                    del val_features_stack[-1]
-                
-            else:
-                for i in range(len_diff):
-                    del val_labels_stack[-1]
+            val_labels_stack = val_labels_tmp[8:]
+            all_labels_stack = all_labels_tmp[8:]
+            assert len(train_features_stack) == len(train_labels_stack), f"train feature len {len(train_features_stack)} must equal label len {len(train_labels_stack)}"
+            assert len(val_features_stack) == len(val_labels_stack), f"val feature len {len(val_features_stack)} must equal label len {len(val_labels_stack)}"
+            assert len(all_features_stack) == len(all_labels_stack), f"all feature len {len(all_features_stack)} must equal label len {len(all_labels_stack)}"
+
             
             numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_TRAIN_FEATURES_SPEECH.npy'), train_features_stack)
             numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_VAL_FEATURES_SPEECH.npy'), val_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_ALL_FEATURES_SPEECH.npy'), all_features_stack)
             numpy.save(os.path.join(data_path, folder, folder + '_TRAIN_LABELS_SPEECH.npy'), train_labels_stack)
             numpy.save(os.path.join(data_path, folder, folder + '_VAL_LABELS_SPEECH.npy'), val_labels_stack)
-            
-            print('\tFeatures: ({}) [{} | {}]\tLabels: [{} | {}]'.format(feature_type + '_speech', len(train_features_stack), len(val_features_stack), len(train_labels_stack), len(val_labels_stack)))
+            numpy.save(os.path.join(data_path, folder, folder + '_ALL_LABELS_SPEECH.npy'), all_labels_stack)
+
+            print('\tSpeech Features: ({}) [{} | {}]\tLabels: [{} | {}]'.format(feature_type + '_speech', len(train_features_stack), len(val_features_stack), len(train_labels_stack), len(val_labels_stack)))
             
             # TURN labels start at index (8 + 26)
             train_labels_tmp1 = labels_tmp[:split_idx + 4 + 26]
-            train_labels_tmp2 = labels_tmp[split_idx + val_size - 1:]
+
+            assert len(labels_tmp)>=len(all_features)+8, f"Not enough labels, have {len(labels_tmp)}, want {len(all_features)+8}"
+            train_labels_tmp2 = labels_tmp[split_idx + val_size:len(all_features)+8]
+            # Shorten train features because we don't have labels past the end of the video
+            train_features_stack = train_features_stack[:-26]
+
             val_labels_tmp = labels_tmp[split_idx:split_idx + val_size + 4 + 26]
-            
+
+            assert len(labels_tmp)>=len(all_features)+8, f"Not enough labels, have {len(labels_tmp)}, want {len(all_features)+8}"
+            all_labels_tmp = labels_tmp[:len(all_features)+8]
+            # Shorten all features because we don't have labels past the end of the video
+            all_features_stack = all_features_stack[:-26]
+
+
             train_labels_stack = [train_labels_tmp1[(8 + 26):], train_labels_tmp2[(8 + 26):]]
             val_labels_stack = val_labels_tmp[(8 + 26):]
+            all_labels_stack = all_labels_tmp[(8 + 26):]
             train_labels_stack = sum(train_labels_stack, [])
-            
-            len_diff = len(train_features_stack) - len(train_labels_stack)
-            if len_diff > 0:
-                for i in range(len_diff):
-                    del train_features_stack[-1]
-                
-            else:
-                for i in range(len_diff):
-                    del train_labels_stack[-1]
-                
-            len_diff = len(val_features_stack) - len(val_labels_stack)
-            if len_diff > 0:
-                for i in range(len_diff):
-                    del val_features_stack[-1]
-                
-            else:
-                for i in range(len_diff):
-                    del val_labels_stack[-1]
-            
+
+            assert len(train_features_stack) == len(train_labels_stack), f"train feature len {len(train_features_stack)} must equal label len {len(train_labels_stack)}"
+            assert len(val_features_stack) == len(val_labels_stack), f"val feature len {len(val_features_stack)} must equal label len {len(val_labels_stack)}"
+            assert len(all_features_stack) == len(all_labels_stack), f"all feature len {len(all_features_stack)} must equal label len {len(all_labels_stack)}"
+
             numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_TRAIN_FEATURES_TURN.npy'), train_features_stack)
             numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_VAL_FEATURES_TURN.npy'), val_features_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_' + feature_type.upper() + '_ALL_FEATURES_TURN.npy'), all_features_stack)
             numpy.save(os.path.join(data_path, folder, folder + '_TRAIN_LABELS_TURN.npy'), train_labels_stack)
             numpy.save(os.path.join(data_path, folder, folder + '_VAL_LABELS_TURN.npy'), val_labels_stack)
+            numpy.save(os.path.join(data_path, folder, folder + '_ALL_LABELS_TURN.npy'), all_labels_stack)
 
-            print('\tFeatures: ({}) [{} | {}]\tLabels: [{} | {}]'.format(feature_type + '_turn', len(train_features_stack), len(val_features_stack), len(train_labels_stack), len(val_labels_stack)))
+
+            print('\tTurn Features: ({}) [{} | {}]\tLabels: [{} | {}]'.format(feature_type + '_turn', len(train_features_stack), len(val_features_stack), len(train_labels_stack), len(val_labels_stack)))
 
 def main():
     # copy_dataset_format("/media/chris/M2/2-Processed_Data/")

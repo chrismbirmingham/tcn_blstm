@@ -1,6 +1,6 @@
 import os
 import torch
-
+from tqdm import tqdm
 import numpy
 import pandas
 import matplotlib.pyplot as plt
@@ -58,7 +58,7 @@ def train(model, device, train_loader, optimizer, criterion, log_interval, epoch
 
     f1s, aurocs, mAPs = [], [], []
     outputs0, outputs1, predictions, targets = [], [], [], []
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, (data, target) in enumerate(tqdm(train_loader)):
         data_v, data_a = data[:, :, :, 0], data[:, :, :, 1]
         
         data_v, data_a, target = torch.FloatTensor(data_v).to(device), torch.FloatTensor(data_a).to(device), torch.LongTensor(target).to(device)
@@ -94,14 +94,14 @@ def train(model, device, train_loader, optimizer, criterion, log_interval, epoch
             AP1 = average_precision_score(targets, outputs1)
             AP0 = average_precision_score(list(1-numpy.array(targets)), outputs0)
             mAP = (AP1 + AP0)/2
-            print('\tEpoch {} [{}/{} ({:.0f}%)]\tLoss {:.4f}\tF1 {:.3f}\tauROC {:.3f}\tmAP {:.3f}'.format(
-                epoch, 
-                batch_idx * len(data), 
-                len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), 
-                loss.item(),
-                f1, auroc, mAP)
-            )
+            # print('\tEpoch {} [{}/{} ({:.0f}%)]\tLoss {:.4f}\tF1 {:.3f}\tauROC {:.3f}\tmAP {:.3f}'.format(
+            #     epoch, 
+            #     batch_idx * len(data), 
+            #     len(train_loader.dataset),
+            #     100. * batch_idx / len(train_loader), 
+            #     loss.item(),
+            #     f1, auroc, mAP)
+            # )
             f1s.append(f1)
             aurocs.append(auroc)
             mAPs.append(mAP)
@@ -156,13 +156,11 @@ def validate(model, device, val_loader, criterion, epoch,  model_type="TCN"):
         
     return acc, f1, auroc, mAP
 
-def main():
-    epochs = 25
+def main(model_type, feature_type, label_type):
+    epochs = 10
     batch_size = 32
-    log_interval = 32*4
+    log_interval = 32*10
     data_path = 'data'
-    model_type = "BLSTM" #"BLSTM"
-    feature_type = 'PERFECTMATCH' # SYNCNET
     
     device = torch.device('cuda')
 
@@ -178,17 +176,17 @@ def main():
 
     folders = os.listdir(data_path)
     for folder in folders:
-        train_features_v = numpy.load(os.path.join(data_path, folder, folder + '_VIDEO_' + feature_type + '_TRAIN_FEATURES.npy'))
-        train_features_a = numpy.load(os.path.join(data_path, folder, folder + '_AUDIO_' + feature_type + '_TRAIN_FEATURES.npy'))
+        train_features_v = numpy.load(os.path.join(data_path, folder, f"{folder}_VIDEO_{feature_type}_TRAIN_FEATURES_{label_type}.npy"))
+        train_features_a = numpy.load(os.path.join(data_path, folder, f"{folder}_AUDIO_{feature_type}_TRAIN_FEATURES_{label_type}.npy"))
         train_features = numpy.stack((train_features_v, train_features_a), axis=-1)
      
-        train_labels = numpy.load(os.path.join(data_path, folder, folder + '_TRAIN_LABELS.npy'))
+        train_labels = numpy.load(os.path.join(data_path, folder, f"{folder}_TRAIN_LABELS_{label_type}.npy"))
         
-        val_features_v = numpy.load(os.path.join(data_path, folder, folder + '_VIDEO_' + feature_type + '_VAL_FEATURES.npy'))
-        val_features_a = numpy.load(os.path.join(data_path, folder, folder + '_AUDIO_' + feature_type + '_VAL_FEATURES.npy'))
+        val_features_v = numpy.load(os.path.join(data_path, folder, f"{folder}_VIDEO_{feature_type}_VAL_FEATURES_{label_type}.npy"))
+        val_features_a = numpy.load(os.path.join(data_path, folder, f"{folder}_AUDIO_{feature_type}_VAL_FEATURES_{label_type}.npy"))
         val_features = numpy.stack((val_features_v, val_features_a), axis=-1)
      
-        val_labels = numpy.load(os.path.join(data_path, folder, folder + '_VAL_LABELS.npy'))
+        val_labels = numpy.load(os.path.join(data_path, folder, f"{folder}_VAL_LABELS_{label_type}.npy"))
         
         train_features = torch.FloatTensor(train_features)
         train_labels = torch.LongTensor(train_labels)
@@ -214,13 +212,13 @@ def main():
 
     for epoch in range(1, epochs + 1):
         print('Train')
-        f1s, aurocs, mAPs = train(model, device, train_loader, optimizer, criterion, log_interval, epoch)
+        f1s, aurocs, mAPs = train(model, device, train_loader, optimizer, criterion, log_interval, epoch, model_type)
         train_metrics["f1s"] += f1s
         train_metrics["aurocs"] += aurocs
         train_metrics["mAPs"] += mAPs
 
         print('Validate')
-        acc, f1, auroc, mAP = validate(model, device, val_loader, criterion, epoch)
+        acc, f1, auroc, mAP = validate(model, device, val_loader, criterion, epoch, model_type)
         val_metrics["f1s"] += [f1]
         val_metrics["aurocs"] += [auroc]
         val_metrics["mAPs"] += [mAP]
@@ -229,12 +227,12 @@ def main():
         for k,v in train_metrics.items():
             plt.plot(v, label=k)
         plt.legend()
-        plt.savefig(f"TCN-{feature_type}-train.png")
+        plt.savefig(f"{model_type}_{feature_type}_{label_type}-train.png")
         plt.clf()
         for k2,v2 in val_metrics.items():
             plt.plot(v2, label=k2)
         plt.legend()
-        plt.savefig(f"TCN-{feature_type}-val.png")
+        plt.savefig(f"{model_type}_{feature_type}_{label_type}-val.png")
         plt.clf()
         
         if f1 > best_f1:
@@ -243,7 +241,11 @@ def main():
             print('\33[31m\tSaving new best model...\33[0m')
             os.makedirs('checkpoints', exist_ok=True)
             state = {'epoch': epoch, 'model': model.state_dict()}
-            torch.save(state, 'checkpoints/TCN_' + feature_type + '.pth')
+            torch.save(state, f'checkpoints/{model_type}_{feature_type}_{label_type}.pth')
 
 if __name__ == '__main__':
-    main()
+    for m in ["TCN","BLSTM"]:
+        for f in ["SYNCNET","PERFECTMATCH"]:
+            for l in ["SPEECH", "TURN"]:
+                print(m,f,l)
+                main(m,f,l)
