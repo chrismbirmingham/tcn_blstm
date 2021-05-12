@@ -102,13 +102,14 @@ def validate(model, device, val_loader, model_type="TCN"):
     print('\tLoss {:.5f}\tAccuracy {:.3f}\tF1: {:.3f}\tauROC: {:.3f}\tmAP: {:.3f}'.format(
         loss, acc, f1, auroc, mAP))
         
-    return acc, f1, auroc, mAP, outputs1
+    return acc, f1, auroc, mAP, outputs0, outputs1
 
-def main():
+def main(model_type, feature_type):
+    print((model_type, feature_type))
     batch_size = 32
-    model_type = "TCN" #"BLSTM"
+    # model_type = "TCN" #"BLSTM"
     data_path = 'data'
-    feature_type = 'PERFECTMATCH'
+    # feature_type = 'PERFECTMATCH'
     
     device = torch.device('cuda')
 
@@ -116,7 +117,7 @@ def main():
         model = Model_TCN().to(device)
     else:
         model = Model_BLSTM().to(device)
-    model.load_state_dict(torch.load(f'checkpoints/{model_type}_' + feature_type + '.pth')["model"])
+    model.load_state_dict(torch.load(f'checkpoints_kalin/{model_type}_' + feature_type + '.pth')["model"])
 
     val_data = []
 
@@ -137,10 +138,11 @@ def main():
 
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-        acc, f1, auroc, mAP, model_out = validate(model, device, val_loader, model_type=model_type)
+        acc, f1, auroc, mAP, out0, out1 = validate(model, device, val_loader, model_type=model_type)
 
-        df = pandas.DataFrame(model_out, columns=["Confidences"])
-        df.to_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_conf.csv"))
+        model_out = zip(out0,out1)
+        df = pandas.DataFrame(model_out, columns=["0Conf","1Conf"])
+        df.to_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_conf_kalin.csv"))
         # val_data.append(val_dataset)
     
     # val_dataset = torch.utils.data.ConcatDataset(val_data)
@@ -168,4 +170,6 @@ def main():
     #     torch.save(state, 'checkpoints/TCN_' + feature_type + '.pth')
 
 if __name__ == '__main__':
-    main()
+    for m in ["TCN","BLSTM"]:
+        for f in ["PERFECTMATCH"]: # "SYNCNET",
+            main(m,f)
