@@ -78,9 +78,9 @@ def main(data_path, model_type, feature_type, label_type, model_trainer=""):
     ang_dict = {"lower":[0],"upper":[0],"acc":[acc],"f1":[f1],"auROC":[auroc],"mAP":[mAP]}
     # for lower_bound in [.5, .6, .7, .8, .9]:
     #     for upper_bound in [1, 1.1, 1.2, 1.3, 1.4, 1.5]:
-    for i in range(0,10,2):
+    for i in range(0,5,2):
         lower_bound = i/10
-        for j in range(10,21,2):
+        for j in range(10,31,3):
             upper_bound = j/10
 
             m = (lower_bound-upper_bound)/75
@@ -105,7 +105,7 @@ def main(data_path, model_type, feature_type, label_type, model_trainer=""):
     
     for i in range(0,15,2):
         base = i/10
-        for j in range(5,100,25):
+        for j in range(5,200,25):
             perc = j/100
 
             gazes_mult = base + all_gazes[:,0]*perc+all_gazes[:,1]*perc
