@@ -244,7 +244,7 @@ def main(model_type, feature_type, label_type):
             torch.save(state, f'checkpoints/{model_type}_{feature_type}_{label_type}.pth')
 
 if __name__ == '__main__':
-    for m in ["TCN","BLSTM"]:
+    for m in ["BLSTM"]:
         for f in ["SYNCNET","PERFECTMATCH"]:
             for l in ["SPEECH", "TURN"]:
                 print(m,f,l)

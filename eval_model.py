@@ -146,8 +146,13 @@ def main(model_type, feature_type, label_type, model_trainer=""):
 
 
 if __name__ == '__main__':
-    for m in ["BLSTM"]:#"TCN",
+    # for m in ["BLSTM"]:#"TCN",
+    #     for f in ["SYNCNET","PERFECTMATCH"]:
+    #         for l in ["SPEECH"]:#, "TURN"
+    #             print(m,f,l)
+    #             main(m,f,l, model_trainer="kalin")
+    for m in ["TCN","BLSTM"]:
         for f in ["SYNCNET","PERFECTMATCH"]:
-            for l in ["SPEECH"]:#, "TURN"
+            for l in ["SPEECH", "TURN"]:
                 print(m,f,l)
-                main(m,f,l, model_trainer="kalin")
+                main(m,f,l, model_trainer="")
