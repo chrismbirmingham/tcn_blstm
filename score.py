@@ -28,7 +28,7 @@ def score(targets, outputs):
     return acc, f1, auroc, mAP
 
 
-def collect_data(data_path, model="TCN", base_model="PERFECTMATCH"):
+def collect_data(data_path, model_type, feature_type, label_type, model_trainer):
     folders = os.listdir(data_path)
 
     all_labels, all_confidences, all_gazes = [], [], []
@@ -37,35 +37,27 @@ def collect_data(data_path, model="TCN", base_model="PERFECTMATCH"):
         if not os.path.isdir(os.path.join(data_path, folder)):
             continue
         
-        # print('Score {}'.format(folder))
+        labels = numpy.load(os.path.join(data_path, folder, f"{folder}_ALL_LABELS_{label_type}.npy"))
+        all_conf = pandas.read_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_{label_type}_conf{model_trainer}.csv"),usecols=["0Conf","1Conf"])
 
-        labels_30fps = pandas.read_csv(os.path.join(data_path, folder, folder + '_VAD_MANUAL.csv'),usecols=["speech_activity"])
-        labels = labels_30fps[labels_30fps.index % 6 != 0].reset_index(drop=True)
-        labels = labels[4:]
-
-        confidences = pandas.read_csv(os.path.join(data_path, folder, f"{folder}_{model}_{base_model}_conf_kalin.csv"),usecols=["0Conf","1Conf"])
+        # confidences = pandas.read_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_{label_type}_conf.csv"),usecols=["0Conf","1Conf"])
         gazes = pandas.read_csv(os.path.join(data_path, folder, f"{folder}_gaze_feat.csv"),usecols=["p1_ang", "p2_ang","p1_at", "p2_at"])
 
-        labels = labels[:confidences.shape[0]]
-        gazes = gazes[:confidences.shape[0]]
+        labels = labels[:all_conf.shape[0]]
+
+        gazes = gazes[8:all_conf.shape[0]+8]
 
 
         gazes = gazes.to_numpy(copy=True)
 
-        labels = labels.to_numpy(copy=True)
-        confidences = confidences.to_numpy(copy=True)
+        # labels = labels.to_numpy(copy=True)
+        confidences = all_conf.to_numpy(copy=True)
+
+        assert len(labels)==len(gazes)==len(confidences), "all must be equal"
 
         all_labels.append(labels)
         all_confidences.append(confidences)
         all_gazes.append(gazes)
-
-        # try:
-        #     acc, f1, auroc, mAP = score(labels, confidences)
-        #     print("Continue?"+f" acc: {acc:.4f}, f1: {f1:.3f}, auroc: {auroc:.3f}, mAP: {mAP:.3f},")
-        #     acc, f1, auroc, mAP = score(labels, new_conf)
-        #     print("Continue?"+f" acc: {acc:.3f}, f1: {f1:.3f}, auroc: {auroc:.3f}, mAP: {mAP:.3f},")
-        # except Exception as e:
-        #     print(e)
 
 
     all_confidences = numpy.concatenate(all_confidences)
@@ -75,46 +67,70 @@ def collect_data(data_path, model="TCN", base_model="PERFECTMATCH"):
     return all_confidences, all_labels, all_gazes
 
 
-def score_model(data_path, model="TCN", base_model="PERFECTMATCH"):
-    all_confidences, all_labels, all_gazes = collect_data(data_path, model, base_model)
-    print("FINAL")
+def main(data_path, model_type, feature_type, label_type, model_trainer=""):
+    all_confidences, all_labels, all_gazes = collect_data(data_path, model_type, feature_type, label_type, model_trainer)
+    print("data collected")
 
     acc, f1, auroc, mAP = score(all_labels, all_confidences)
     print(f" acc: {acc:.4f}, f1: {f1:.4f}, auroc: {auroc:.4f}, mAP: {mAP:.4f}")
     
     print("**************ANG*******************")
-    for lower_bound in [.5, .6, .7, .8, .9]:
-        for upper_bound in [1, 1.1, 1.2, 1.3, 1.4, 1.5]:
-            print(f"\n{lower_bound}, {upper_bound}")
+    ang_dict = {"lower":[0],"upper":[0],"acc":[acc],"f1":[f1],"auROC":[auroc],"mAP":[mAP]}
+    # for lower_bound in [.5, .6, .7, .8, .9]:
+    #     for upper_bound in [1, 1.1, 1.2, 1.3, 1.4, 1.5]:
+    for i in range(0,10,2):
+        lower_bound = i/10
+        for j in range(10,21,2):
+            upper_bound = j/10
 
             m = (lower_bound-upper_bound)/75
             gazes_mult = (all_gazes[:,2] + all_gazes[:,3]) *.5  * (180/math.pi) * m + upper_bound
             
             all_new_conf = multiply(all_confidences,gazes_mult)
             acc2, f12, auroc2, mAP2 = score(all_labels, all_new_conf)
-            # print(f" acc: {acc2:.4f}, f1: {f12:.4f}, auroc: {auroc2:.4f}, mAP: {mAP2:.4f}")
 
-            print(f"Improvement: acc: {acc2-acc:.4f}, f1: {f12-f1:.4f}, auroc: {auroc2-auroc:.4f}, mAP: {mAP2-mAP:.4f}")
+            print(f"lower :{lower_bound}, upper: {upper_bound} acc: {acc2-acc:.4f}, f1: {f12-f1:.4f}, auroc: {auroc2-auroc:.4f}, mAP: {mAP2-mAP:.4f}")
+            ang_dict['lower'].append(lower_bound)
+            ang_dict['upper'].append(upper_bound) 
+            ang_dict['acc'].append(acc2-acc)
+            ang_dict['f1'].append(f12-f1)
+            ang_dict['auROC'].append(auroc2-auroc)
+            ang_dict['mAP'].append(mAP2-mAP)
+    ang_df = pandas.DataFrame(ang_dict)
+    ang_df.to_csv(f"{model_type}_{feature_type}_{label_type}_ang_metrics{model_trainer}.csv")
+
 
     print("**************AT*******************")
+    at_dict = {"base":[0],"perc":[0],"acc":[acc],"f1":[f1],"auROC":[auroc],"mAP":[mAP]}
     
-    for base in [.7, .8, .9, 1, 1.1]:
-        for m in [.05, .15, .25, .5, .75]:
-            print(f"\n{base}, {m}")
-            gazes_mult = base + all_gazes[:,0]*m+all_gazes[:,1]*m
+    for i in range(0,15,2):
+        base = i/10
+        for j in range(5,100,25):
+            perc = j/100
+
+            gazes_mult = base + all_gazes[:,0]*perc+all_gazes[:,1]*perc
             all_new_conf = multiply(all_confidences,gazes_mult)
             acc2, f12, auroc2, mAP2 = score(all_labels, all_new_conf)
-            # print(f" acc: {acc2:.4f}, f1: {f12:.4f}, auroc: {auroc2:.4f}, mAP: {mAP2:.4f}")
 
             print(f"Improvement: acc: {acc2-acc:.4f}, f1: {f12-f1:.4f}, auroc: {auroc2-auroc:.4f}, mAP: {mAP2-mAP:.4f}")
-    
-
-
-    input("continue?")
+            at_dict['base'].append(base)
+            at_dict['perc'].append(perc) 
+            at_dict['acc'].append(acc2-acc)
+            at_dict['f1'].append(f12-f1)
+            at_dict['auROC'].append(auroc2-auroc)
+            at_dict['mAP'].append(mAP2-mAP)
+    at_df = pandas.DataFrame(at_dict)
+    at_df.to_csv(f"{model_type}_{feature_type}_{label_type}_at_metrics{model_trainer}.csv")
 
 
 if __name__ == '__main__':
-    for m in ["TCN","BLSTM"]:
-        for f in ["PERFECTMATCH"]:#"SYNCNET",
-            print(m,f) 
-            score_model('data',m,f)
+    for m in ["BLSTM"]:#"TCN",
+        for f in ["SYNCNET","PERFECTMATCH"]:
+            for l in ["SPEECH"]:#, "TURN"
+                print(m,f,l)
+                main("data",m,f,l, model_trainer="kalin")
+    # for m in ["TCN"]:
+    #     for f in ["SYNCNET","PERFECTMATCH"]:
+    #         for l in ["SPEECH", "TURN"]:
+    #             print(m,f,l)
+    #             main("data",m,f,l, model_trainer="")

@@ -104,12 +104,10 @@ def validate(model, device, val_loader, model_type="TCN"):
         
     return acc, f1, auroc, mAP, outputs0, outputs1
 
-def main(model_type, feature_type):
+def main(model_type, feature_type, label_type, model_trainer=""):
     print((model_type, feature_type))
     batch_size = 32
-    # model_type = "TCN" #"BLSTM"
     data_path = 'data'
-    # feature_type = 'PERFECTMATCH'
     
     device = torch.device('cuda')
 
@@ -117,59 +115,39 @@ def main(model_type, feature_type):
         model = Model_TCN().to(device)
     else:
         model = Model_BLSTM().to(device)
-    model.load_state_dict(torch.load(f'checkpoints_kalin/{model_type}_' + feature_type + '.pth')["model"])
 
-    val_data = []
+    model.load_state_dict(torch.load(f'{model_trainer}checkpoints/{model_type}_{feature_type}_{label_type}.pth')["model"])
+
+    all_data = []
 
     folders = os.listdir(data_path)
     for folder in folders:
         print(folder)
-        val_features_v = numpy.load(os.path.join(data_path, folder, folder + '_VIDEO_' + feature_type + '_FEATURES.npy'))
-        val_features_a = numpy.load(os.path.join(data_path, folder, folder + '_AUDIO_' + feature_type + '_FEATURES.npy'))
-        val_features = numpy.stack((val_features_v, val_features_a), axis=-1)
+        all_features_v = numpy.load(os.path.join(data_path, folder, f"{folder}_VIDEO_{feature_type}_ALL_FEATURES_{label_type}.npy"))
+        all_features_a = numpy.load(os.path.join(data_path, folder, f"{folder}_AUDIO_{feature_type}_ALL_FEATURES_{label_type}.npy"))
+
+        all_features = numpy.stack((all_features_v, all_features_a), axis=-1)
      
-        val_labels = numpy.load(os.path.join(data_path, folder, folder + '_LABELS.npy'))
+        all_labels = numpy.load(os.path.join(data_path, folder, f"{folder}_ALL_LABELS_{label_type}.npy"))
         
-        val_features = torch.FloatTensor(val_features)
-        val_labels = torch.LongTensor(val_labels)
+        all_features = torch.FloatTensor(all_features)
+        all_labels = torch.LongTensor(all_labels)
         
-        val_dataset = torch.utils.data.TensorDataset(val_features, val_labels)
+        all_dataset = torch.utils.data.TensorDataset(all_features, all_labels)
 
 
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
+        all_loader = DataLoader(all_dataset, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-        acc, f1, auroc, mAP, out0, out1 = validate(model, device, val_loader, model_type=model_type)
+        acc, f1, auroc, mAP, out0, out1 = validate(model, device, all_loader, model_type=model_type)
 
         model_out = zip(out0,out1)
         df = pandas.DataFrame(model_out, columns=["0Conf","1Conf"])
-        df.to_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_conf_kalin.csv"))
-        # val_data.append(val_dataset)
-    
-    # val_dataset = torch.utils.data.ConcatDataset(val_data)
+        df.to_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_{label_type}_conf{model_trainer}.csv"))
 
-    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
-
-    # print("plot")
-    # for k,v in train_metrics.items():
-    #     plt.plot(v, label=k)
-    # plt.legend()
-    # plt.savefig(f"TCN-{feature_type}-train.png")
-    # plt.clf()
-    # for k2,v2 in val_metrics.items():
-    #     plt.plot(v2, label=k2)
-    # plt.legend()
-    # plt.savefig(f"TCN-{feature_type}-val.png")
-    # plt.clf()
-    
-    # if f1 > best_f1:
-    #     best_f1 = f1
-        
-    #     print('\33[31m\tSaving new best model...\33[0m')
-    #     os.makedirs('checkpoints', exist_ok=True)
-    #     state = {'epoch': epoch, 'model': model.state_dict()}
-    #     torch.save(state, 'checkpoints/TCN_' + feature_type + '.pth')
 
 if __name__ == '__main__':
-    for m in ["TCN","BLSTM"]:
-        for f in ["PERFECTMATCH"]: # "SYNCNET",
-            main(m,f)
+    for m in ["BLSTM"]:#"TCN",
+        for f in ["SYNCNET","PERFECTMATCH"]:
+            for l in ["SPEECH"]:#, "TURN"
+                print(m,f,l)
+                main(m,f,l, model_trainer="kalin")

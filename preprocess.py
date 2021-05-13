@@ -49,7 +49,7 @@ def copy_dataset_format(drive_path):
                 numpy.save(os.path.join(feat_dir, f"feats_audio_{net}.npy"),auds)
 
 
-def add_gaze_features(gaze_data_path):
+def add_gaze_features(gaze_data_path, dataset="chris"):
     for session in range(1, 28):
         for person in ["left","right","center"]:
             folder_id = f"{session}{person[0]}"
@@ -59,10 +59,18 @@ def add_gaze_features(gaze_data_path):
 
             # Gather gaze features into one df
             columns_of_interest = [f"{p}->{person}" for p in ["left", "right", "center"] if p != person]
-            gaze_ang_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_ang.csv"))
-            gaze_feat_df = gaze_ang_df[columns_of_interest]
+            if dataset=="kalin":
+                base_path = "/home/chris/code/modeling-pipeline/data/active_speaker/"
+                gaze_at_df = pd.read_csv(f"{base_path}/kinect_pose/{session}G3_KINECT_DISCRETE_{EXTRALARGE}.csv")
 
-            gaze_at_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_at_extralarge_cyl.csv"))
+                # csv with a column for each permutation of looker and subject with angle in radians
+                # e.g. "left->right" | "left->center" | "right->left" | etc.
+                gaze_ang_df = pd.read_csv(f"{base_path}/kinect_pose/{session}G3_KINECT_CONTINUOUS.csv")
+            elif dataset=="chris":
+                gaze_ang_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_ang.csv"))
+                gaze_at_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_at_extralarge_cyl.csv"))
+
+            gaze_feat_df = gaze_ang_df[columns_of_interest]
             for p in ["left", "right", "center"]:
                 if p != person:
                     gaze_feat_df[f"{p}_at"] = (gaze_at_df[[p]]==person).astype(int)
