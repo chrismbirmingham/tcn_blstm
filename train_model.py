@@ -19,8 +19,8 @@ class Model_BLSTM(torch.nn.Module):
         
         self.nhid = 128
         
-        self.lstm_v = torch.nn.LSTM(512, self.nhid, num_layers=2, bidirectional=True)
-        self.lstm_a = torch.nn.LSTM(512, self.nhid, num_layers=2, bidirectional=True)
+        self.lstm_v = torch.nn.LSTM(512, self.nhid, num_layers=1, bidirectional=True)
+        self.lstm_a = torch.nn.LSTM(512, self.nhid, num_layers=1, bidirectional=True)
         self.fc = torch.nn.Linear(2*self.nhid*2*5, 2)
 
     def forward(self, x_v, x_a):
@@ -39,8 +39,8 @@ class Model_TCN(torch.nn.Module):
         
         self.nhid = 128
         
-        self.tcn_v = TemporalConvNet(512, [self.nhid, self.nhid], 3, dropout=0.3)
-        self.tcn_a = TemporalConvNet(512, [self.nhid, self.nhid], 3, dropout=0.3)
+        self.tcn_v = TemporalConvNet(512, [self.nhid], 3, dropout=0.3)
+        self.tcn_a = TemporalConvNet(512, [self.nhid], 3, dropout=0.3)
         self.fc = torch.nn.Linear(2*self.nhid, 2)
 
     def forward(self, x_v, x_a):
@@ -157,7 +157,7 @@ def validate(model, device, val_loader, criterion, epoch,  model_type="TCN"):
     return acc, f1, auroc, mAP
 
 def main(model_type, feature_type, label_type):
-    epochs = 10
+    epochs = 20
     batch_size = 32
     log_interval = 32*10
     data_path = 'data'
@@ -241,10 +241,10 @@ def main(model_type, feature_type, label_type):
             print('\33[31m\tSaving new best model...\33[0m')
             os.makedirs('checkpoints', exist_ok=True)
             state = {'epoch': epoch, 'model': model.state_dict()}
-            torch.save(state, f'checkpoints/{model_type}_{feature_type}_{label_type}.pth')
+            torch.save(state, f'checkpoints/{model_type}_{feature_type}_{label_type}-small.pth')
 
 if __name__ == '__main__':
-    for m in ["BLSTM"]:
+    for m in ["TCN","BLSTM"]:
         for f in ["SYNCNET","PERFECTMATCH"]:
             for l in ["SPEECH", "TURN"]:
                 print(m,f,l)

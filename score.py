@@ -23,7 +23,11 @@ def score(targets, outputs):
     targets = targets.flatten()
     acc = sum(targets==predictions)/len(targets)
     f1 = f1_score(targets, predictions)
-    auroc = roc_auc_score(targets, outputs1)
+    try:
+        auroc = roc_auc_score(targets, outputs1)
+    except ValueError as e:
+        print(e, f"Class balance is: {sum(targets)/len(targets)}")
+        auroc = None
     AP1 = average_precision_score(targets, outputs1)
     AP0 = average_precision_score(list(1-targets), outputs0)
     mAP = (AP1 + AP0)/2
@@ -155,7 +159,7 @@ def main(data_path, model_type, feature_type, label_type, model_trainer=""):
 
 if __name__ == '__main__':
     threadlist = []
-    for m in ["BLSTM"]:#"TCN",
+    for m in ["TCN","BLSTM"]:#"TCN",
         for f in ["SYNCNET","PERFECTMATCH"]:
             for l in ["SPEECH"]:#, "TURN"
                 print(m,f,l)
