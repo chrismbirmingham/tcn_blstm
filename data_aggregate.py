@@ -46,6 +46,8 @@ def load_data(session, person, data_path="data", model_trainer=""):
     for m in ["TCN","BLSTM"]:
         for f in ["SYNCNET","PERFECTMATCH"]:
             for l in ["SPEECH", "TURN"]:
+                if model_trainer=="kalin" and l == "TURN":
+                    continue
                 all_conf = pd.read_csv(os.path.join(data_path, folder, f"{folder}_{m}_{f}_{l}_conf{model_trainer}.csv"),usecols=["0Conf","1Conf"])
                 all_conf.columns = [f"{m}-{f}-{l}-{c}" for c in all_conf.columns]
                 df_dict[f"{m}-{f}-{l}-CONF"] = all_conf.reset_index(drop=True)
@@ -94,4 +96,4 @@ def load_data(session, person, data_path="data", model_trainer=""):
     # labels = labels_25fps.values
 for i in range(28):
     for person in ["left","right","center"]:
-        _ = load_data(i, person, data_path="data", model_trainer="")
+        _ = load_data(i, person, data_path="data", model_trainer="kalin")
