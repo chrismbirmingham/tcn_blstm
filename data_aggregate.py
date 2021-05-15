@@ -43,14 +43,14 @@ def load_data(session, person, data_path="data", model_trainer=""):
         df_dict[label_type]=labels_df.reset_index(drop=True)
 
     # New Confidences
-    for m in ["TCN","BLSTM"]:
-        for f in ["SYNCNET","PERFECTMATCH"]:
-            for l in ["SPEECH", "TURN"]:
-                if model_trainer=="kalin" and l == "TURN":
-                    continue
-                all_conf = pd.read_csv(os.path.join(data_path, folder, f"{folder}_{m}_{f}_{l}_conf{model_trainer}.csv"),usecols=["0Conf","1Conf"])
-                all_conf.columns = [f"{m}-{f}-{l}-{c}" for c in all_conf.columns]
-                df_dict[f"{m}-{f}-{l}-CONF"] = all_conf.reset_index(drop=True)
+    for layers in ["1LAYER","2LAYER"]:
+        for m in ["TCN","BLSTM"]:
+            for f in ["SYNCNET","PERFECTMATCH"]:
+                for l in ["SPEECH", "TURN"]:
+
+                    all_conf = pd.read_csv(os.path.join(data_path, folder, f"{folder}_CONF/{model_trainer}_{layers}_{l}_{m}_{f}.csv"),usecols=["0Conf","1Conf"])
+                    all_conf.columns = [f"{layers}_{l}_{m}_{f}-{c}" for c in all_conf.columns]
+                    df_dict[f"{layers}_{l}_{m}_{f}-CONF"] = all_conf.reset_index(drop=True)
 
     # Confidences
     sync_path=f"/media/chris/M2/2-Processed_Data/syncnet_confidences/pyavi/{folder}/framewise_confidences.csv"
@@ -81,19 +81,9 @@ def load_data(session, person, data_path="data", model_trainer=""):
     full_df.to_feather(os.path.join(data_path, folder, f"analysis_df_{model_trainer}.feather"))
 
     return df_dict
-
-    # confidences = pandas.read_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_{label_type}_conf.csv"),usecols=["0Conf","1Conf"])
-
-    # labels = labels[:all_conf.shape[0]]
-
-    # gazes = gazes[8:all_conf.shape[0]+8]
-
-    # labels_30fps = pd.read_csv(os.path.join("data", folder, folder + '_VAD_MANUAL.csv'),usecols=["speech_activity"])
-    # labels_25fps = labels_30fps[labels_30fps.index % 6 != 0].reset_index(drop=True)
-    
+   
 
 
-    # labels = labels_25fps.values
 for i in range(28):
     for person in ["left","right","center"]:
         _ = load_data(i, person, data_path="data", model_trainer="kalin")

@@ -19,8 +19,8 @@ class Model_BLSTM(torch.nn.Module):
         
         self.nhid = 128
         
-        self.lstm_v = torch.nn.LSTM(512, self.nhid, num_layers=2, bidirectional=True)
-        self.lstm_a = torch.nn.LSTM(512, self.nhid, num_layers=2, bidirectional=True)
+        self.lstm_v = torch.nn.LSTM(512, self.nhid, num_layers=NUM_LAYERS, bidirectional=True)
+        self.lstm_a = torch.nn.LSTM(512, self.nhid, num_layers=NUM_LAYERS, bidirectional=True)
         self.fc = torch.nn.Linear(2*self.nhid*2*5, 2)
 
     def forward(self, x_v, x_a):
@@ -39,8 +39,8 @@ class Model_TCN(torch.nn.Module):
         
         self.nhid = 128
         
-        self.tcn_v = TemporalConvNet(512, [self.nhid, self.nhid], 3, dropout=0.3)
-        self.tcn_a = TemporalConvNet(512, [self.nhid, self.nhid], 3, dropout=0.3)
+        self.tcn_v = TemporalConvNet(512, [self.nhid for i in range(NUM_LAYERS)], 3, dropout=0.3)
+        self.tcn_a = TemporalConvNet(512, [self.nhid for i in range(NUM_LAYERS)], 3, dropout=0.3)
         self.fc = torch.nn.Linear(2*self.nhid, 2)
 
     def forward(self, x_v, x_a):
@@ -105,7 +105,6 @@ def validate(model, device, val_loader, model_type="TCN"):
     return acc, f1, auroc, mAP, outputs0, outputs1
 
 def main(model_type, feature_type, label_type, model_trainer=""):
-    print((model_type, feature_type))
     batch_size = 32
     data_path = 'data'
     
@@ -116,13 +115,13 @@ def main(model_type, feature_type, label_type, model_trainer=""):
     else:
         model = Model_BLSTM().to(device)
 
-    model.load_state_dict(torch.load(f'{model_trainer}checkpoints/{model_type}_{feature_type}_{label_type}.pth')["model"])
+    model.load_state_dict(torch.load(f'checkpoints/{model_trainer}/{NUM_LAYERS}LAYER/{label_type}/{model_type}_{feature_type}.pth')["model"])
 
     all_data = []
 
     folders = os.listdir(data_path)
     for folder in folders:
-        print(folder)
+        # print(folder)
         all_features_v = numpy.load(os.path.join(data_path, folder, f"{folder}_VIDEO_{feature_type}_ALL_FEATURES_{label_type}.npy"))
         all_features_a = numpy.load(os.path.join(data_path, folder, f"{folder}_AUDIO_{feature_type}_ALL_FEATURES_{label_type}.npy"))
 
@@ -142,15 +141,21 @@ def main(model_type, feature_type, label_type, model_trainer=""):
 
         model_out = zip(out0,out1)
         df = pandas.DataFrame(model_out, columns=["0Conf","1Conf"])
-        df.to_csv(os.path.join(data_path, folder, f"{folder}_{model_type}_{feature_type}_{label_type}_conf{model_trainer}.csv"))
+
+        if not os.path.exists(os.path.join(data_path, folder, f"{folder}_CONF")):
+            os.makedirs(os.path.join(data_path, folder, f"{folder}_CONF"))
+
+        df.to_csv(os.path.join(data_path, folder, f"{folder}_CONF/{model_trainer}_{NUM_LAYERS}LAYER_{label_type}_{model_type}_{feature_type}.csv"))
 
 
 if __name__ == '__main__':
-    for m in ["TCN"]:#"TCN",
-        for f in ["SYNCNET","PERFECTMATCH"]:
-            for l in ["SPEECH"]:#, "TURN"
-                print(m,f,l)
-                main(m,f,l, model_trainer="kalin")
+    for t in ["kalin","chris"]:
+        for NUM_LAYERS in [1,2]:
+            for m in ["TCN", "BLSTM"]:
+                for f in ["SYNCNET","PERFECTMATCH"]:
+                    for l in ["SPEECH", "TURN"]:
+                        print(t,NUM_LAYERS,m,f,l)
+                        main(m,f,l,model_trainer=t)
     # for m in ["TCN","BLSTM"]:
     #     for f in ["SYNCNET","PERFECTMATCH"]:
     #         for l in ["SPEECH", "TURN"]:
