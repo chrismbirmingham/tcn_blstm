@@ -79,21 +79,21 @@ def add(outputs,gaze_mult, ratio=[2,1]):
     return numpy.array(list(zip(outputs0,outputs1)), dtype=object)
 
 
-def check_adding(all_confidences, all_labels, all_gazes):
-    lower_bound = 0
-    upper_bound = 1
-    m = (lower_bound-upper_bound)/75
-    gazes_mult = (all_gazes[:,0] + all_gazes[:,1]) *.5  * (180/math.pi) * m + upper_bound
+# def check_adding(all_confidences, all_labels, all_gazes):
+#     lower_bound = 0
+#     upper_bound = 1
+#     m = (lower_bound-upper_bound)/75
+#     gazes_mult = (all_gazes[:,0] + all_gazes[:,1]) *.5  * (180/math.pi) * m + upper_bound
     
-    all_new_conf = add(all_confidences,gazes_mult, ratio=[2,1])
-    acc2, f12, auroc2, mAP2 = score(all_labels, all_new_conf)
-    print(f"ANG  acc: {acc2-acc:.4f}, f1: {f12-f1:.4f}, auroc: {auroc2-auroc:.4f}, mAP: {mAP2-mAP:.4f}")
+#     all_new_conf = add(all_confidences,gazes_mult, ratio=[2,1])
+#     acc2, f12, auroc2, mAP2 = score(all_labels, all_new_conf)
+#     print(f"ANG  acc: {acc2-acc:.4f}, f1: {f12-f1:.4f}, auroc: {auroc2-auroc:.4f}, mAP: {mAP2-mAP:.4f}")
 
-    gazes_mult = (all_gazes[:,2] + all_gazes[:,3]) *.5
-    all_new_conf = add(all_confidences,gazes_mult, ratio=[2,1])
-    acc2, f12, auroc2, mAP2 = score(all_labels, all_new_conf)
-    print(f"AT acc: {acc2-acc:.4f}, f1: {f12-f1:.4f}, auroc: {auroc2-auroc:.4f}, mAP: {mAP2-mAP:.4f}")
-    return
+#     gazes_mult = (all_gazes[:,2] + all_gazes[:,3]) *.5
+#     all_new_conf = add(all_confidences,gazes_mult, ratio=[2,1])
+#     acc2, f12, auroc2, mAP2 = score(all_labels, all_new_conf)
+#     print(f"AT acc: {acc2-acc:.4f}, f1: {f12-f1:.4f}, auroc: {auroc2-auroc:.4f}, mAP: {mAP2-mAP:.4f}")
+#     return
 
 
 def main(data_path, model_type, feature_type, label_type, model_trainer=""):
