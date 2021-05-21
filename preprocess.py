@@ -13,8 +13,6 @@ def copy_dataset_format(drive_path):
     for session in sessions:
         if not os.path.isdir(os.path.join(drive_path,"Annotation-Turns", session)):
             continue
-        if session in ["17", "21", "26"]:
-            continue
         for person in ["left","right","center"]:
             personal_folder = session+person[0]
             data_folder = os.path.join("data",personal_folder)
@@ -33,8 +31,8 @@ def copy_dataset_format(drive_path):
                 if not os.path.isdir(feat_dir):
                     os.makedirs(feat_dir)
 
-                aud_path = f"/media/chris/M2/2-Processed_Data/{net}_output/pyfeat512/{personal_folder}/aud_feats.pt"
-                vid_path = f"/media/chris/M2/2-Processed_Data/{net}_output/pyfeat512/{personal_folder}/vid_feats.pt"
+                aud_path = f"/home/chris/code/syncnet_python/data/{net}_output/pyfeat512/{personal_folder}/aud_feats.pt"
+                vid_path = f"/home/chris/code/syncnet_python/data/{net}_output/pyfeat512/{personal_folder}/vid_feats.pt"
 
                 auds = torch.load(aud_path)
                 vids = torch.load(vid_path)
@@ -61,11 +59,11 @@ def add_gaze_features(gaze_data_path, dataset="chris"):
             columns_of_interest = [f"{p}->{person}" for p in ["left", "right", "center"] if p != person]
             if dataset=="kalin":
                 base_path = "/home/chris/code/modeling-pipeline/data/active_speaker/"
-                gaze_at_df = pd.read_csv(f"{base_path}/kinect_pose/{session}G3_KINECT_DISCRETE_{EXTRALARGE}.csv")
+                gaze_at_df = pandas.read_csv(f"{base_path}/kinect_pose/{session}G3_KINECT_DISCRETE_EXTRALARGE.csv")
 
                 # csv with a column for each permutation of looker and subject with angle in radians
                 # e.g. "left->right" | "left->center" | "right->left" | etc.
-                gaze_ang_df = pd.read_csv(f"{base_path}/kinect_pose/{session}G3_KINECT_CONTINUOUS.csv")
+                gaze_ang_df = pandas.read_csv(f"{base_path}/kinect_pose/{session}G3_KINECT_CONTINUOUS.csv")
             elif dataset=="chris":
                 gaze_ang_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_ang.csv"))
                 gaze_at_df = pandas.read_csv(os.path.join(gaze_data_path, str(session), "pose_at_extralarge_cyl.csv"))
@@ -213,9 +211,9 @@ def gen_data(data_path):
 
 def main():
     # copy_dataset_format("/media/chris/M2/2-Processed_Data/")
-    # add_gaze_features("/media/chris/M2/2-Processed_Data/Gaze-Data")
+    add_gaze_features("/media/chris/M2/2-Processed_Data/Gaze-Data")
     
-    gen_data('data')
+    # gen_data('data')
 
 if __name__ == '__main__':
     main()

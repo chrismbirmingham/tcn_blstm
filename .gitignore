@@ -1,3 +1,10 @@
 data/*
+kalin_data/*
 *.pth
 *.pyc
+metrics/*
+kalincheckpoints/*
+checkpoints/*
+training_curves/*
+training_curves-short/*
+*.zip
