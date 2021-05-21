@@ -158,6 +158,9 @@ def validate(model, device, val_loader, criterion, epoch,  model_type="TCN"):
     return acc, f1, auroc, mAP
 
 def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
+    directory = f"checkpoints/{trainer}/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     num_folds=10
     epochs = 20
     batch_size = 32
@@ -249,12 +252,12 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
             for k,v in train_metrics.items():
                 plt.plot(v, label=k)
             plt.legend()
-            plt.savefig(f"checkpoints/{trainer}/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}-fold{fold}-train.png")
+            plt.savefig(f"{directory}/{fold}-fold-train.png")
             plt.clf()
             for k2,v2 in val_metrics.items():
                 plt.plot(v2, label=k2)
             plt.legend()
-            plt.savefig(f"checkpoints/{trainer}/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}-fold{fold}-val.png")
+            plt.savefig(f"{directory}/{fold}-fold-val.png")
             plt.clf()
             
             if f1 > best_f1:
@@ -263,21 +266,21 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
                 print('\33[31m\tSaving new best model...\33[0m')
                 os.makedirs('checkpoints', exist_ok=True)
                 state = {'epoch': epoch, 'model': model.state_dict()}
-                torch.save(state, f'checkpoints/{trainer}/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}-fold{fold}.pth')
+                torch.save(state, f'{directory}/{fold}-fold_model.pth')
         
         # Testing
         if model_type == "TCN":
             model = Model_TCN(num_layers).to(device)
         else:
             model = Model_BLSTM(num_layers).to(device)
-        model.load_state_dict(torch.load(f'checkpoints/{trainer}/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}.pth')["model"])
+        model.load_state_dict(torch.load(f'{directory}/{fold}-fold_model.pth')["model"])
         test_metrics={}
         acc, f1, auroc, mAP = validate(model, device, test_loader, criterion, epoch, model_type)
         test_metrics["acc"] = acc
         test_metrics["f1"] = f1
         test_metrics["auroc"] = auroc
         test_metrics["mAP"] = mAP
-        with open(f'checkpoints/{trainer}/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}-fold{fold}-test.json', 'w') as f:
+        with open(f'{directory}/{fold}-fold_test_scores.json', 'w') as f:
 
             json = json.dumps(test_metrics)
             f.write(json)
@@ -289,7 +292,7 @@ if __name__ == '__main__':
     features = "PERFECTMATCH"
     trainer = "chris"
     layers = 2
-    for model in ["TCN","BLSTM"]:
+    for model in ["BLSTM"]:# "TCN",
         for label in ["SPEECH", "TURN"]:
             print(model,features,label)
             main(model,features,label,layers, trainer=trainer)
