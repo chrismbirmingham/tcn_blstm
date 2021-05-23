@@ -236,19 +236,19 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
         val_metrics = {"f1s":[], "aurocs":[], "mAPs":[]}
 
         for epoch in range(1, epochs + 1):
-            print('Train')
+            print('Train', epoch)
             f1s, aurocs, mAPs = train(model, device, train_loader, optimizer, criterion, log_interval, epoch, model_type)
             train_metrics["f1s"] += f1s
             train_metrics["aurocs"] += aurocs
             train_metrics["mAPs"] += mAPs
 
-            print('Validate')
+            print('Validate', epoch)
             acc, f1, auroc, mAP = validate(model, device, val_loader, criterion, epoch, model_type)
             val_metrics["f1s"] += [f1]
             val_metrics["aurocs"] += [auroc]
             val_metrics["mAPs"] += [mAP]
 
-            print("plot")
+            print("plot", epoch)
             for k,v in train_metrics.items():
                 plt.plot(v, label=k)
             plt.legend()
@@ -275,6 +275,7 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
             model = Model_BLSTM(num_layers).to(device)
         model.load_state_dict(torch.load(f'{directory}/{fold}-fold_model.pth')["model"])
         test_metrics={}
+        print("Test",epoch)
         acc, f1, auroc, mAP = validate(model, device, test_loader, criterion, epoch, model_type)
         test_metrics["acc"] = acc
         test_metrics["f1"] = f1
@@ -282,10 +283,19 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
         test_metrics["mAP"] = mAP
         with open(f'{directory}/{fold}-fold_test_scores.json', 'w') as f:
 
-            json = json.dumps(test_metrics)
-            f.write(json)
+            json_obj = json.dumps(test_metrics)
+            f.write(json_obj)
             f.close()
 
+        train_data = []
+        val_data = []
+        test_data = []
+        train_dataset = None
+        val_dataset = None
+        test_dataset = None
+        train_loader = None
+        val_loader = None
+        test_loader = None
 
 
 if __name__ == '__main__':
