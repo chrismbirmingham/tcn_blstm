@@ -15,7 +15,7 @@ def copy_dataset_format(drive_path):
             continue
         for person in ["left","right","center"]:
             personal_folder = session+person[0]
-            data_folder = os.path.join("data",personal_folder)
+            data_folder = os.path.join("Data_RFSG",personal_folder)
             if not os.path.isdir(data_folder):
                 os.makedirs(data_folder)
             
@@ -26,7 +26,7 @@ def copy_dataset_format(drive_path):
             speaker_turns.to_csv(os.path.join(data_folder,personal_folder+"_VAD_MANUAL.csv"))
 
             for net in ["syncnet", "perfectmatch"]:
-                feat_dir = os.path.join("data",personal_folder,personal_folder+"_SYNCS","pywork",personal_folder)
+                feat_dir = os.path.join("Data_RFSG",personal_folder,personal_folder+"_SYNCS","pywork",personal_folder)
                 print(net, " features will be stored in: ", feat_dir)
                 if not os.path.isdir(feat_dir):
                     os.makedirs(feat_dir)
@@ -81,10 +81,7 @@ def add_gaze_features(gaze_data_path, dataset="chris"):
             gaze_feat_df_25fps = gaze_feat_df[gaze_feat_df.index % 6 != 0].reset_index(drop=True)
             shifted_gaze_feat_df_25fps = gaze_feat_df_25fps[4:]
 
-            shifted_gaze_feat_df_25fps.to_csv(os.path.join("data",folder_id, f"{folder_id}_gaze_feat.csv"))
-
-
-
+            shifted_gaze_feat_df_25fps.to_csv(os.path.join("Data_RFSG",folder_id, f"{folder_id}_gaze_feat.csv"))
 
 
 

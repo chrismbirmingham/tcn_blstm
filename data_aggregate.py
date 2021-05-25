@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 
-def load_chris_data(session, person, data_path="data", model_trainer=""):
+def load_chris_data(session, person, data_path="data", trained_on=""):
     """ Load all the data we are interested in for a single person-session.
 
     Must ensure start frames match and lengths are the same.
@@ -47,8 +47,9 @@ def load_chris_data(session, person, data_path="data", model_trainer=""):
         for m in ["TCN","BLSTM"]:
             for f in ["SYNCNET","PERFECTMATCH"]:
                 for l in ["SPEECH", "TURN"]:
-
-                    all_conf = pd.read_csv(os.path.join(data_path, folder, f"{folder}_CONF/{model_trainer}_{layers}_{l}_{m}_{f}.csv"),usecols=["0Conf","1Conf"])
+                    if trained_on == "FOVA": trainer="kalin"
+                    if trained_on == "RFSG": trainer="chris"
+                    all_conf = pd.read_csv(os.path.join(data_path, folder, f"{folder}_CONF/{trainer}_{layers}_{l}_{m}_{f}.csv"),usecols=["0Conf","1Conf"])
                     all_conf.columns = [f"{layers}_{l}_{m}_{f}-{c}" for c in all_conf.columns]
                     df_dict[f"{layers}_{l}_{m}_{f}-CONF"] = all_conf.reset_index(drop=True)
 
@@ -78,12 +79,12 @@ def load_chris_data(session, person, data_path="data", model_trainer=""):
         df_dict[k] = df[:m]
 
     full_df = pd.concat([df for k,df in df_dict.items()],axis=1)
-    full_df.to_feather(os.path.join(data_path, folder, f"analysis_df_{model_trainer}.feather"))
+    full_df.to_feather(os.path.join(data_path, folder, f"adf_trained_on_{trained_on}.feather"))
 
     return df_dict
    
 
-def load_kalin_data(session, person, data_path="data", model_trainer=""):
+def load_kalin_data(session, person, data_path="data", trained_on=""):
     """ Load all the data we are interested in for a single person-session.
 
     Must ensure start frames match and lengths are the same.
@@ -156,7 +157,7 @@ def load_kalin_data(session, person, data_path="data", model_trainer=""):
 
     # perf_path=f"/media/chris/M2/2-Processed_Data/perfectmatch_confidences/pyavi/{folder}/framewise_confidences.csv"
     # perf_conf = pd.read_csv(perf_path,usecols=["Confidence"])
-    perf_conf = pd.read_csv(f"{feature_path}/{session}G3R_SYNCNET.csv")
+    perf_conf = pd.read_csv(f"{feature_path}/{session}G3R_PERFECTMATCH.csv")
     perf_conf.columns = ["pConf"]
     df_dict["PERFECTMATCH"] = perf_conf[8:].reset_index(drop=True)
     
@@ -203,19 +204,20 @@ def load_kalin_data(session, person, data_path="data", model_trainer=""):
         df_dict[k] = df[:m]
 
     full_df = pd.concat([df for k,df in df_dict.items()],axis=1)
-    full_df.to_feather(os.path.join(data_path, folder, f"analysis_df_{model_trainer}.feather"))
+    full_df.to_feather(os.path.join(data_path, folder, f"adf_trained_on_{trained_on}.feather"))
 
     return df_dict
 
+
+
 for i in range(1,28):
     for person in ["left","right","center"]:
-        # try:
-        _ = load_chris_data(i, person, data_path="data", model_trainer="chris")
-        # except:
-        #     continue
+        _ = load_chris_data(i, person, data_path="Data_RFSG", trained_on="FOVA")
+        _ = load_chris_data(i, person, data_path="Data_RFSG", trained_on="RFSG")
 
 
-# for i in range(1,16):
-#     for person in ["left","right","center"]:
-#         _ = load_kalin_data(i, person, data_path="/home/chris/code/tcn_blstm/kalin_data", model_trainer="kalin")
-# #         # input("CONTINUE?")
+
+for i in range(1,16):
+    for person in ["left","right","center"]:
+        _ = load_kalin_data(i, person, data_path="Data_FOVA", trained_on="RFSG")
+        # _ = load_kalin_data(i, person, data_path="Data_FOVA", trained_on="FOVA")

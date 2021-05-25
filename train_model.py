@@ -95,14 +95,6 @@ def train(model, device, train_loader, optimizer, criterion, log_interval, epoch
             AP1 = average_precision_score(targets, outputs1)
             AP0 = average_precision_score(list(1-numpy.array(targets)), outputs0)
             mAP = (AP1 + AP0)/2
-            # print('\tEpoch {} [{}/{} ({:.0f}%)]\tLoss {:.4f}\tF1 {:.3f}\tauROC {:.3f}\tmAP {:.3f}'.format(
-            #     epoch, 
-            #     batch_idx * len(data), 
-            #     len(train_loader.dataset),
-            #     100. * batch_idx / len(train_loader), 
-            #     loss.item(),
-            #     f1, auroc, mAP)
-            # )
             f1s.append(f1)
             aurocs.append(auroc)
             mAPs.append(mAP)
@@ -165,7 +157,7 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
     epochs = 20
     batch_size = 32
     log_interval = 32*10
-    data_path = 'data'
+    data_path = 'Data_RFSG'
     
     device = torch.device('cuda')
 
@@ -176,7 +168,7 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
     optimizer = torch.optim.Adam(model.parameters())
     criterion = torch.nn.CrossEntropyLoss()
 
-    for fold in range(10):
+    for fold in range(9,10):
         print("Fold: ", fold)
 
         train_data = []
@@ -303,6 +295,6 @@ if __name__ == '__main__':
     trainer = "chris"
     layers = 2
     for model in ["BLSTM"]:# "TCN",
-        for label in ["SPEECH", "TURN"]:
+        for label in ["SPEECH"]:#, "TURN"
             print(model,features,label)
             main(model,features,label,layers, trainer=trainer)
