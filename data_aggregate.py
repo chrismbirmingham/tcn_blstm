@@ -128,6 +128,7 @@ def load_kalin_data(session, person, data_path="data", trained_on=""):
     #     df_dict[label_type]=labels_df.reset_index(drop=True)
     # csv with a column for each speaker label with binary values for talking or not talking
     turns = pd.read_csv(f"{feature_path}/{session}G3_VAD.csv", usecols=[person])
+    turns = turns[turns.index % 6 != 0].reset_index(drop=True)
     speech_df = turns[8:].reset_index(drop=True)
     speech_df.columns=["SPEECH-LABEL"]
     df_dict["SPEECH"] = speech_df
@@ -151,13 +152,13 @@ def load_kalin_data(session, person, data_path="data", trained_on=""):
     # sync_path=f"/media/chris/M2/2-Processed_Data/syncnet_confidences/pyavi/{folder}/framewise_confidences.csv"
     # sync_conf = pd.read_csv(sync_path,usecols=["Confidence"])
     # csv with a single columns labeled "Confidence" and values from syncnet output
-    sync_conf = pd.read_csv(f"{feature_path}/{session}G3C_SYNCNET.csv")
+    sync_conf = pd.read_csv(f"{feature_path}/{folder}_SYNCNET.csv")
     sync_conf.columns = ["sConf"]
     df_dict["SYNCNET"] = sync_conf[8:].reset_index(drop=True)
 
     # perf_path=f"/media/chris/M2/2-Processed_Data/perfectmatch_confidences/pyavi/{folder}/framewise_confidences.csv"
     # perf_conf = pd.read_csv(perf_path,usecols=["Confidence"])
-    perf_conf = pd.read_csv(f"{feature_path}/{session}G3R_PERFECTMATCH.csv")
+    perf_conf = pd.read_csv(f"{feature_path}/{folder}_PERFECTMATCH.csv")
     perf_conf.columns = ["pConf"]
     df_dict["PERFECTMATCH"] = perf_conf[8:].reset_index(drop=True)
     
@@ -172,10 +173,12 @@ def load_kalin_data(session, person, data_path="data", trained_on=""):
     columns_of_interest = [f"{p}->{person}" for p in ["left", "right", "center"] if p != person]
 
     gaze_at_df = pd.read_csv(f"{feature_path}/{session}G3_KINECT_DISCRETE_EXTRALARGE.csv")
+    gaze_at_df = gaze_at_df[gaze_at_df.index % 6 != 0].reset_index(drop=True)
 
     # csv with a column for each permutation of looker and subject with angle in radians
     # e.g. "left->right" | "left->center" | "right->left" | etc.
     gaze_ang_df = pd.read_csv(f"{feature_path}/{session}G3_KINECT_CONTINUOUS.csv")
+    gaze_ang_df = gaze_ang_df[gaze_ang_df.index % 6 != 0].reset_index(drop=True)
    
 
     gaze_feat_df = gaze_ang_df[columns_of_interest]
@@ -190,6 +193,8 @@ def load_kalin_data(session, person, data_path="data", trained_on=""):
 
     opencv_path=f"/home/chris/Downloads/openface_data/{folder}/{folder}_FACE.csv"
     poses = pd.read_csv(opencv_path, usecols=[" pose_Rx"," pose_Ry"])
+    poses = poses[poses.index % 6 != 0].reset_index(drop=True)
+
 
     poses.columns = [c[1:] for c in poses.columns]
     df_dict["HEAD-ANGLEs"] = poses[8:].reset_index(drop=True)
@@ -210,10 +215,10 @@ def load_kalin_data(session, person, data_path="data", trained_on=""):
 
 
 
-for i in range(1,28):
-    for person in ["left","right","center"]:
-        _ = load_chris_data(i, person, data_path="Data_RFSG", trained_on="FOVA")
-        _ = load_chris_data(i, person, data_path="Data_RFSG", trained_on="RFSG")
+# for i in range(1,28):
+#     for person in ["left","right","center"]:
+#         _ = load_chris_data(i, person, data_path="Data_RFSG", trained_on="FOVA")
+#         _ = load_chris_data(i, person, data_path="Data_RFSG", trained_on="RFSG")
 
 
 

@@ -1,5 +1,5 @@
-data/*
-kalin_data/*
+Data_FOVA/*
+Data_RFSG/*
 *.pth
 *.pyc
 metrics/*
@@ -7,4 +7,5 @@ kalincheckpoints/*
 checkpoints/*
 training_curves/*
 training_curves-short/*
+old/*
 *.zip
