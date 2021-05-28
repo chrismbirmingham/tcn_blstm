@@ -1,5 +1,4 @@
-Data_FOVA/*
-Data_RFSG/*
+Data_*
 *.pth
 *.pyc
 metrics/*
@@ -9,3 +8,4 @@ training_curves/*
 training_curves-short/*
 old/*
 *.zip
+*.npy
