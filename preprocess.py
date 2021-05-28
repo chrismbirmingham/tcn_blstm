@@ -31,8 +31,8 @@ def copy_dataset_format(drive_path):
                 if not os.path.isdir(feat_dir):
                     os.makedirs(feat_dir)
 
-                aud_path = f"/home/chris/code/syncnet_python/data/{net}_output/pyfeat512/{personal_folder}/aud_feats.pt"
-                vid_path = f"/home/chris/code/syncnet_python/data/{net}_output/pyfeat512/{personal_folder}/vid_feats.pt"
+                aud_path = f"/home/interactionlab/Downloads/{net}_output/pyfeat512/{personal_folder}/aud_feats.pt"
+                vid_path = f"/home/interactionlab/Downloads/{net}_output/pyfeat512/{personal_folder}/vid_feats.pt"
 
                 auds = torch.load(aud_path)
                 vids = torch.load(vid_path)
@@ -51,7 +51,7 @@ def add_gaze_features(gaze_data_path, dataset="chris"):
     for session in range(1, 28):
         for person in ["left","right","center"]:
             folder_id = f"{session}{person[0]}"
-            if folder_id not in os.listdir("data/"):
+            if folder_id not in os.listdir("Data_RFSG/"):
                 print(f"Not including {folder_id}")
                 continue
 
@@ -207,10 +207,10 @@ def gen_data(data_path):
             print('\tTurn Features: ({}) [{} | {}]\tLabels: [{} | {}]'.format(feature_type + '_turn', len(train_features_stack), len(val_features_stack), len(train_labels_stack), len(val_labels_stack)))
 
 def main():
-    # copy_dataset_format("/media/chris/M2/2-Processed_Data/")
-    add_gaze_features("/media/chris/M2/2-Processed_Data/Gaze-Data")
+    # copy_dataset_format("/media/interactionlab/M1/2- Processed Data/")
+    add_gaze_features("/media/interactionlab/M1/2- Processed Data/Gaze-Data")
     
-    # gen_data('data')
+    gen_data('Data_RFSG')
 
 if __name__ == '__main__':
     main()

@@ -167,11 +167,8 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
     if not os.path.exists(directory):
         os.makedirs(directory)
     num_folds=10
-    patience=10
     fold=1
-    epochs = 25
     batch_size = 64
-    log_interval = 32*8
     data_path = 'Data_RFSG'
     
     device = torch.device('cuda')
@@ -201,7 +198,7 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
     cross_validator = KFold(n_splits=num_folds, shuffle=True, random_state=101)
     cross_validator_splits = cross_validator.split(range(len(dataset)))
 
-    for train_idx, _ in cross_validator_splits:
+    for train_idx, test_idx in cross_validator_splits:
         print("Fold: ",fold)
         # device = torch.device('cuda')
 
@@ -209,63 +206,25 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
             model = Model_TCN(num_layers).to(device)
         else:
             model = Model_BLSTM(num_layers).to(device)
+        model.load_state_dict(torch.load(f'{directory}/{fold}-fold_model.pth')["model"])
+
         optimizer = torch.optim.Adam(model.parameters())
         criterion = torch.nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
 
-        train_len = int(len(train_idx) * 0.9)
+        test_loader = DataLoader(torch.utils.data.Subset(dataset, test_idx), batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
+        
+        test_metrics={}
+        print("Test",0)
+        acc, f1, auroc, mAP = validate(model, device, test_loader, criterion, 0, model_type)
+        test_metrics["acc"] = acc
+        test_metrics["f1"] = f1
+        test_metrics["auroc"] = auroc
+        test_metrics["mAP"] = mAP
+        with open(f'{directory}/{fold}-fold_test_scores.json', 'w') as f:
 
-        val_idx = train_idx[train_len:]
-        train_idx = train_idx[:train_len]
-
-        train_loader = DataLoader(torch.utils.data.Subset(dataset, train_idx), batch_size=batch_size, shuffle=True, num_workers=0, drop_last=True)
-        val_loader = DataLoader(torch.utils.data.Subset(dataset, val_idx), batch_size=batch_size, shuffle=False, num_workers=0, drop_last=True)
-
-        best_f1 = 0
-        counter = 0
-        train_metrics = {"f1s":[], "aurocs":[], "mAPs":[]}
-        val_metrics = {"f1s":[], "aurocs":[], "mAPs":[]}
-
-        for epoch in range(1, epochs + 1):
-            if counter > patience: continue
-            print('Train', epoch, flush=True)
-            f1s, aurocs, mAPs = train(model, device, train_loader, optimizer, criterion, log_interval, epoch, model_type)
-            train_metrics["f1s"] += f1s
-            train_metrics["aurocs"] += aurocs
-            train_metrics["mAPs"] += mAPs
-
-            print('Validate', epoch, flush=True)
-            acc, f1, auroc, mAP = validate(model, device, val_loader, criterion, epoch, model_type)
-            val_metrics["f1s"] += [f1]
-            val_metrics["aurocs"] += [auroc]
-            val_metrics["mAPs"] += [mAP]
-            
-            if f1 > best_f1:
-                best_f1 = f1
-                counter=0
-                
-                print('\33[31m\tSaving new best model...\33[0m')
-                os.makedirs('checkpoints', exist_ok=True)
-                state = {'epoch': epoch, 'model': model.state_dict()}
-                torch.save(state, f'{directory}/{fold}-fold_model.pth')
-            else: counter +=1
-
-            print("Plot Figures")
-            for k,v in train_metrics.items():
-                plt.plot(v, label=k)
-
-            plt.xticks(range(epochs), range(1, epochs + 1))
-            plt.legend()
-            plt.savefig(f"{directory}/{fold}-fold-train.png")
-            plt.clf()
-
-            for k2,v2 in val_metrics.items():
-                plt.plot(v2, label=k2)
-
-            plt.xticks(range(epochs), range(1, epochs + 1))
-            plt.legend()
-            plt.savefig(f"{directory}/{fold}-fold-val.png")
-            plt.clf()
-    
+            json_obj = json.dumps(test_metrics)
+            f.write(json_obj)
+            f.close()
 
         fold += 1
 
@@ -274,8 +233,8 @@ if __name__ == '__main__':
     # features = "PERFECTMATCH"
     trainer = "chris"
     layers = 2
-    for features in ["SYNCNET"]:#"PERFECTMATCH",
-        for model in ["BLSTM"]:# "BLSTM","TCN"
-            for label in ["SPEECH"]:#,"TURN", 
+    for model in ["TCN","BLSTM"]:# "BLSTM","TCN"
+        for features in ["PERFECTMATCH","SYNCNET"]:
+            for label in ["TURN", "SPEECH"]:
                 print(model,features,label)
                 main(model,features,label,layers, trainer=trainer)

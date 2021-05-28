@@ -163,10 +163,10 @@ def calculate_class_weights(dataset, class_num):
     return weights
 
 def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
-    directory = f"checkpoints/{trainer}/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}"
+    directory = f"checkpoints/{trainer}-l6o/{num_layers}LAYER/{label_type}/{model_type}_{feature_type}"
     if not os.path.exists(directory):
         os.makedirs(directory)
-    num_folds=10
+    num_folds=11
     patience=10
     fold=1
     epochs = 25
@@ -176,34 +176,37 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
     
     device = torch.device('cuda')
 
+    #Note - make sure to update the checkpoint dir so that you don't overwrite your saved models!!!
+    # I have 69 people so I am doing 11 folds
 
     data = []
     folders = os.listdir(data_path)
-    for folder in folders:
 
-        features_v = numpy.load(os.path.join(data_path, folder, folder + '_VIDEO_' + feature_type + '_ALL_FEATURES_' + label_type + '.npy'))
-        features_a = numpy.load(os.path.join(data_path, folder, folder + '_AUDIO_' + feature_type + '_ALL_FEATURES_' + label_type + '.npy'))
-        features = numpy.stack((features_v, features_a), axis=-1)
+    cross_validator = KFold(n_splits=num_folds, shuffle=False, random_state=101)
+    cross_validator_splits = cross_validator.split(range(len(folders)))
 
-        labels = numpy.load(os.path.join(data_path, folder, folder + '_ALL_LABELS_' + label_type + '.npy'))
-
-        features = torch.FloatTensor(features)
-        labels = torch.LongTensor(labels)
-
-        dataset = torch.utils.data.TensorDataset(features, labels)
-        data.append(dataset)
-
-
-    dataset = torch.utils.data.ConcatDataset(data)
-    class_weights = calculate_class_weights(dataset, 2)
-    print(class_weights)
-
-    cross_validator = KFold(n_splits=num_folds, shuffle=True, random_state=101)
-    cross_validator_splits = cross_validator.split(range(len(dataset)))
-
-    for train_idx, _ in cross_validator_splits:
+    for train_fldr_idxs, _ in cross_validator_splits:
         print("Fold: ",fold)
-        # device = torch.device('cuda')
+
+        for idx, folder in enumerate(folders):
+            if idx in train_fldr_idxs:
+
+                features_v = numpy.load(os.path.join(data_path, folder, folder + '_VIDEO_' + feature_type + '_ALL_FEATURES_' + label_type + '.npy'))
+                features_a = numpy.load(os.path.join(data_path, folder, folder + '_AUDIO_' + feature_type + '_ALL_FEATURES_' + label_type + '.npy'))
+                features = numpy.stack((features_v, features_a), axis=-1)
+
+                labels = numpy.load(os.path.join(data_path, folder, folder + '_ALL_LABELS_' + label_type + '.npy'))
+
+                features = torch.FloatTensor(features)
+                labels = torch.LongTensor(labels)
+
+                dataset = torch.utils.data.TensorDataset(features, labels)
+                data.append(dataset)
+
+
+        dataset = torch.utils.data.ConcatDataset(data)
+        class_weights = calculate_class_weights(dataset, 2)
+        print(class_weights)
 
         if model_type == "TCN":
             model = Model_TCN(num_layers).to(device)
@@ -271,11 +274,10 @@ def main(model_type, feature_type, label_type, num_layers, trainer="chris"):
 
 
 if __name__ == '__main__':
-    # features = "PERFECTMATCH"
     trainer = "chris"
     layers = 2
-    for features in ["SYNCNET"]:#"PERFECTMATCH",
+    for features in ["PERFECTMATCH","SYNCNET"]:
         for model in ["BLSTM"]:# "BLSTM","TCN"
-            for label in ["SPEECH"]:#,"TURN", 
+            for label in ["TURN", "SPEECH"]:
                 print(model,features,label)
                 main(model,features,label,layers, trainer=trainer)

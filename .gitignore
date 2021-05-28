@@ -1,5 +1,4 @@
-data/*
-kalin_data/*
+Data_*
 *.pth
 *.pyc
 metrics/*
@@ -8,3 +7,4 @@ checkpoints/*
 training_curves/*
 training_curves-short/*
 *.zip
+*.npy
